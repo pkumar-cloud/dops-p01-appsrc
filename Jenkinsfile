@@ -1,6 +1,6 @@
 def imageName = 'stalinrtp.jfrog.io/valaxy-docker/valaxy-rtp'
 def registry  = 'https://stalinrtp.jfrog.io'
-def version   = '1.0.2'
+def version   = '1.0.0' // Docker image vrsion
 def app
 pipeline {
     agent {
@@ -27,12 +27,12 @@ pipeline {
         
         stage ("Sonar Analysis") {
             environment {
-               scannerHome = tool 'SonarQubeScanner'
+               scannerHome = tool 'SonarQubeScanner' // Name defined under Manage Jenkins => Global Tool Config => SonarQubeScanner => Name
             }
             steps {
                 echo '<--------------- Sonar Analysis started  --------------->'
-                withSonarQubeEnv('SonarServer') {
-                    sh "${scannerHome}/bin/sonar-scanner"
+                withSonarQubeEnv('SonarServer') { // Name defined under Manage Jenkins => Configure System => SonarQube installations => Name
+                    sh "${scannerHome}/bin/sonar-scanner" // Will look for details in sonar-project.properties, scan and push the results to server.
                 }    
                 echo '<--------------- Sonar Analysis stopped  --------------->'
             }   
@@ -43,8 +43,8 @@ pipeline {
             steps {
                 script {
                   echo '<--------------- Quality Gate started  --------------->' 
-                    timeout(time: 1, unit: 'HOURS') {
-                        def qg = waitForQualityGate()
+                    timeout(time: 1, unit: 'HOURS') {  // Timeout afetr 1 hour.
+                        def qg = waitForQualityGate() // Jenkins will keeo waiting
                         if(qg.status!='OK'){
                           error "Pipeline failed due to the Quality gate issue"   
                         }    
@@ -68,20 +68,21 @@ pipeline {
             steps {
                 script {
                         echo '<--------------- Jar Publish Started --------------->'
-                         def server = Artifactory.newServer url:registry+"/artifactory" ,  credentialsId:"artifactorycredentialid"
+                         def server = Artifactory.newServer url:registry+"/artifactory" ,  credentialsId:"artifactorycredentialid" // Credential should be same as defined in jenkins global credentials.
                          def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}";
-                         def uploadSpec = """{
+                         // target: Name of Jfrog virtual repo, defines below what data to upload, 
+                         def uploadSpec = """{ 
                               "files": [
                                 {
                                   "pattern": "jarstaging/(*)",
-                                  "target": "valaxy-libs-release/{1}",
+                                  "target": "valaxy-libs-release/{1}", 
                                   "flat": "false",
                                   "props" : "${properties}",
                                   "exclusions": [ "*.sha1", "*.md5"]
                                 }
                              ]
                          }"""
-                         def buildInfo = server.upload(uploadSpec)
+                         def buildInfo = server.upload(uploadSpec) 
                          buildInfo.env.collect()
                          server.publishBuildInfo(buildInfo)
                          echo '<--------------- Jar Publish Ended --------------->'  
@@ -94,8 +95,9 @@ pipeline {
             steps {
                 script {
                    echo '<--------------- Docker Publish Started --------------->'  
-                    docker.withRegistry(registry, 'dockercredentialid'){
+                    docker.withRegistry(registry, 'dockercredentialid'){ // Credential should be same as defined in jenkins global credentials. 
                         app.push()
+                        // docker.image(imageName).push(version)
                     }    
                    echo '<--------------- Docker Publish Ended --------------->'  
                 }
@@ -105,6 +107,7 @@ pipeline {
          stage(" Deploy ") {
           steps {
             script {
+               input: "Proceed or not ?" // Ask for manual confirmation
                echo '<--------------- Deploy Started --------------->'
                sh './deploy.sh'
                echo '<--------------- Deploy Ends --------------->'

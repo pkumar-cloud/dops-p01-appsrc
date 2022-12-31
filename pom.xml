@@ -118,7 +118,7 @@
 	<distributionManagement>
 		<repository>
 			<id>dev</id>
-			<url>file://jarstaging</url>
+			<url>file://jarstaging</url> <!-- will create a jarstaging folder in workspace and store all the artifacts -->
 		</repository>
 	</distributionManagement>
 
